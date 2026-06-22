@@ -59,11 +59,22 @@ def register():
             role,
             telephone,
             email,
-            password
+            password,
+            subscription,
+            plan
         )
-        VALUES(?,?,?,?,?,?)
+        VALUES(?,?,?,?,?,?,?,?)
         """,
-        (nom, prenom, role, telephone, email, password))
+        (
+            nom,
+            prenom,
+            role,
+            telephone,
+            email,
+            password,
+            "free",
+            ""
+        ))
 
         conn.commit()
 
@@ -109,7 +120,9 @@ def login():
     if user:
         session["user"] = f"{user[1]} {user[2]}"
         session["role"] = user[3]
-        session["email"] = user[4]  # ✅ IMPORTANT AJOUTÉ
+        session["email"] = user[5]  # ✅ IMPORTANT AJOUTÉ
+        session["subscription"] = user[8]
+        session["plan"] = user[9]
         return redirect("/dashboard")
     return render_template(
         "index.html",
@@ -127,7 +140,8 @@ def dashboard():
     return render_template(
         "dashboard.html",
         user=session["user"],
-        role=session["role"]
+        role=session["role"],
+        subscription=session.get("subscription", "free")
     )
 
 # ================= LOGOUT =================
@@ -162,15 +176,6 @@ def delete_account():
     return redirect("/")
 
 
-@app.route("/pay")
-def pay():
-
-    if "user" not in session:
-        return redirect("/")
-
-    session["paid"] = True
-
-    return redirect("/dashboard")
 
 @app.route("/static/docs/lois")
 def pdf_lois():
@@ -178,14 +183,38 @@ def pdf_lois():
     if "user" not in session:
         return redirect("/")
 
-    if not session.get("paid"):
-        return render_template("dashboard.html",
+    if session.get("subscription") != "premium":
+
+        return render_template(
+            "dashboard.html",
             user=session["user"],
             role=session["role"],
-            pay_required="⚠️ Vous devez payer pour accéder aux documents"
+            pay_required="⚠️ Vous devez être Premium pour accéder aux documents"
         )
 
     return render_template("lois.html")
+
+conn = sqlite3.connect("database.db")
+cursor = conn.cursor()
+
+try:
+    cursor.execute("""
+    ALTER TABLE users
+    ADD COLUMN subscription TEXT DEFAULT 'free'
+    """)
+except:
+    pass
+
+try:
+    cursor.execute("""
+    ALTER TABLE users
+    ADD COLUMN plan TEXT DEFAULT ''
+    """)
+except:
+    pass
+
+conn.commit()
+conn.close()
 
 from flask import jsonify
 import sqlite3
@@ -196,25 +225,55 @@ def finance_data():
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
-    # Nombre total d'utilisateurs
     cursor.execute("SELECT COUNT(*) FROM users")
     users = cursor.fetchone()[0]
 
-    # Nombre d'agriculteurs
-    cursor.execute("SELECT COUNT(*) FROM users WHERE role='Agriculteur'")
+    cursor.execute("""
+    SELECT COUNT(*)
+    FROM users
+    WHERE role='Agriculteur'
+    """)
     farmers = cursor.fetchone()[0]
 
-    # Nombre d'investisseurs nationaux
-    cursor.execute("SELECT COUNT(*) FROM users WHERE role='Investisseur National'")
+    cursor.execute("""
+    SELECT COUNT(*)
+    FROM users
+    WHERE role='Investisseur National'
+    """)
     national = cursor.fetchone()[0]
 
-    # Nombre d'investisseurs étrangers
-    cursor.execute("SELECT COUNT(*) FROM users WHERE role='Investisseur Étranger'")
+    cursor.execute("""
+    SELECT COUNT(*)
+    FROM users
+    WHERE role='Investisseur Étranger'
+    """)
     foreign = cursor.fetchone()[0]
 
-    # Nombre d'abonnés Premium
-    cursor.execute("SELECT COUNT(*) FROM users WHERE premium=1")
+    cursor.execute("""
+    SELECT COUNT(*)
+    FROM users
+    WHERE subscription='premium'
+    """)
     premium = cursor.fetchone()[0]
+
+    cursor.execute("""
+    SELECT COUNT(*)
+    FROM users
+    WHERE plan='1mois'
+    """)
+    month1 = cursor.fetchone()[0]
+
+    cursor.execute("""
+    SELECT COUNT(*)
+    FROM users
+    WHERE plan='12mois'
+    """)
+    month12 = cursor.fetchone()[0]
+
+    revenu_1mois = month1 * 500
+    revenu_12mois = month12 * 4000
+
+    total_revenu = revenu_1mois + revenu_12mois
 
     conn.close()
 
@@ -223,10 +282,119 @@ def finance_data():
         "farmers": farmers,
         "national": national,
         "foreign": foreign,
-        "premium": premium
+        "premium": premium,
+        "month1": month1,
+        "month12": month12,
+        "revenu1": revenu_1mois,
+        "revenu12": revenu_12mois,
+        "revenu": total_revenu
     })
 
+@app.route("/pay/<plan>")
+def pay(plan):
 
+    if "email" not in session:
+        return redirect("/")
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    UPDATE users
+    SET subscription='premium',
+        plan=?
+    WHERE email=?
+    """, (plan, session["email"]))
+
+    conn.commit()
+    conn.close()
+
+    session["subscription"] = "premium"
+    session["plan"] = plan
+
+    return redirect("/dashboard")
+
+from flask import send_from_directory
+
+@app.route("/pdf/lois_agricoles")
+def pdf_lois_agricoles():
+
+    print("USER =", session.get("user"))
+    print("SUBSCRIPTION =", session.get("subscription"))
+
+    if "user" not in session:
+        return "Utilisateur non connecté"
+
+    if session.get("subscription") != "premium":
+        return "Compte non premium"
+
+    return send_from_directory(
+        "static/docs",
+        "lois_agricoles.pdf"
+    )
+@app.route("/pdf/maladies")
+def pdf_maladies():
+
+    if "user" not in session:
+        return redirect("/")
+
+    if session.get("subscription") != "premium":
+        return redirect("/dashboard")
+
+    return send_from_directory(
+        "static/docs",
+        "maladies.pdf"
+    )
+
+@app.route("/pdf/traitements")
+def pdf_traitements():
+
+    print("USER =", session.get("user"))
+    print("SUBSCRIPTION =", session.get("subscription"))
+
+    if "user" not in session:
+        return "Utilisateur non connecté"
+
+    if session.get("subscription") != "premium":
+        return "Compte non premium"
+
+    return send_from_directory(
+        "static/docs",
+        "traitements.pdf"
+    )
+    
+@app.route("/forgot-password")
+def forgot_password():
+    return render_template("forgot_password.html")
+
+@app.route("/reset-password", methods=["POST"])
+def reset_password():
+
+    email = request.form["email"]
+    new_password = request.form["new_password"]
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    # vérifier si utilisateur existe
+    cursor.execute("SELECT * FROM users WHERE email=?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        return "❌ Email introuvable"
+
+    # mise à jour du mot de passe
+    cursor.execute("""
+        UPDATE users
+        SET password=?
+        WHERE email=?
+    """, (new_password, email))
+
+    conn.commit()
+    conn.close()
+
+    return "✅ Mot de passe réinitialisé avec succès"
 
 if __name__ == "__main__":
     app.run(debug=True)

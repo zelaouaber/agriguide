@@ -3,7 +3,7 @@
 // VARIABLES GLOBALES
 // =============================
 
-let isPremiumUser = false; // 🔴 statut premium (sera remplacé par backend plus tard)
+//let isPremiumUser = false; // 🔴 statut premium (sera remplacé par backend plus tard)
 let currentLang = "fr";     // pour gérer la traduction globale
 // =============================
 // FORMULAIRES LOGIN / REGISTER
@@ -558,7 +558,7 @@ function showSection(section) {
 
         <h3>📄 ${currentLang === "fr" ? "Version PDF" : "النسخة PDF"}</h3>
 
-        ${premiumBlock(currentLang, "/static/docs/lois_agricoles.pdf")}
+        ${premiumBlock(currentLang, "/pdf/lois_agricoles")}
 
     </div>
     `;
@@ -823,7 +823,7 @@ function showSection(section) {
     <br>
 
     <div class="premium-box">
-        ${premiumBlock(currentLang, "/static/docs/maladies.pdf")}
+        ${premiumBlock(currentLang, "/pdf/maladies")}
     </div>
 
     </div>
@@ -849,7 +849,7 @@ function showSection(section) {
 
     <br>
 
-    ${premiumBlock(currentLang, "/static/docs/traitements.pdf")}
+    ${premiumBlock(currentLang, "/pdf/traitements")}
 
     </div>
 
@@ -879,6 +879,30 @@ function showSection(section) {
             <p>${currentLang === "fr" ? "Investisseurs étrangers" : "المستثمرون الأجانب"} : ${data.foreign}</p>
 
             <p>${currentLang === "fr" ? "Abonnés Premium" : "الأعضاء المميزون"} : ${data.premium}</p>
+            <p>
+            ${currentLang==="fr" ? "Abonnements 1 mois" : "اشتراكات شهر واحد"}
+            : ${data.month1}
+            </p>
+
+            <p>
+            ${currentLang==="fr" ? "Abonnements 12 mois" : "اشتراكات 12 شهراً"}
+            : ${data.month12}
+            </p>
+
+            <p>
+            ${currentLang==="fr" ? "Revenu 1 mois" : "مداخيل اشتراكات شهر واحد"}
+            : ${data.revenu1} DA
+            </p>
+
+            <p>
+            ${currentLang==="fr" ? "Revenu 12 mois" : "مداخيل اشتراكات 12 شهراً"}
+            : ${data.revenu12} DA
+            </p>
+
+            <p style="font-weight:bold;color:green;">
+            ${currentLang==="fr" ? "Revenu Total" : "إجمالي المداخيل"}
+            : ${data.revenu} DA
+            </p>
             `;
 
         })
@@ -949,7 +973,9 @@ function showSection(section) {
 
     </ul>
 
-    <button class="download-btn">
+    <button
+    class="download-btn"
+    onclick="subscribe('1mois')">
 
     ${currentLang==="fr"
     ?
@@ -987,7 +1013,9 @@ function showSection(section) {
 
     </ul>
 
-    <button class="download-btn">
+    <button
+    class="download-btn"
+    onclick="subscribe('12mois')">
 
     ${currentLang==="fr"
     ?
@@ -1033,22 +1061,22 @@ function showSection(section) {
     }
 }
 
-function premiumBlock(lang, pdfPath) {
+function premiumBlock(lang, pdfRoute) {
 
     if (isPremiumUser) {
         return `
-            <a href="${pdfPath}" target="_blank" class="download-btn">
+            <a href="${pdfRoute}" target="_blank" class="download-btn">
                 ${translations[lang].download_pdf}
             </a>
         `;
     }
 
     return `
-        <div class="premium-box">
-            <p>🔒 ${translations[lang].payment_required}</p>
+        <div class="info-card">
+            <p>🔒 ${lang === "fr" ? "Accès Premium requis" : "مطلوب اشتراك بريميوم"}</p>
 
-            <button class="download-btn" disabled>
-                ${translations[lang].unlock_pdf}
+            <button class="download-btn" onclick="showSection('payment')">
+                💳 ${lang === "fr" ? "Passer Premium" : "الاشتراك الآن"}
             </button>
         </div>
     `;
@@ -1572,3 +1600,10 @@ function applyLanguage(lang){
     document.getElementById("backLoginBtn").textContent = translations[lang].back_login;
 }
 
+function subscribe(plan){
+
+    alert("Paiement validé avec succès !");
+
+    window.location.href="/pay/"+plan;
+
+}
