@@ -962,7 +962,7 @@ function showSection(section) {
     }
     </h3>
 
-    <h2>500 DA</h2>
+    <h2>1500 DA</h2>
 
     <ul>
 
@@ -1001,7 +1001,7 @@ function showSection(section) {
 
     </h3>
 
-    <h2>4000 DA</h2>
+    <h2>18000 DA</h2>
 
     <ul>
 
