@@ -270,8 +270,8 @@ def finance_data():
     """)
     month12 = cursor.fetchone()[0]
 
-    revenu_1mois = month1 * 500
-    revenu_12mois = month12 * 4000
+    revenu_1mois = month1 * 1500
+    revenu_12mois = month12 * 18000
 
     total_revenu = revenu_1mois + revenu_12mois
 
