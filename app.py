@@ -13,6 +13,9 @@ def home():
 @app.route("/register", methods=["POST"])
 def register():
 
+    print("ROLE RECU =", request.form["role"])
+
+    
     nom = request.form["nom"]
     prenom = request.form["prenom"]
     role = request.form["role"]
